@@ -44,12 +44,8 @@ public class LyViewMapActivity extends MapActivity
         letTitleTxt.setVisibility(View.GONE);
         topLeftBtn.setVisibility(View.GONE);
 
-        topLeftBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
+        letTitleTxt.setOnClickListener(mClickCallBack);
+        topLeftBtn.setOnClickListener(mClickCallBack);
 
         setContentView(topContentView);
         mapView = new MapView(this);
@@ -57,8 +53,6 @@ public class LyViewMapActivity extends MapActivity
         setLeftButton(R.drawable.tt_top_back);
         setLeftText(getResources().getString(R.string.top_left_back));
         setTitle("三石定位");
-        setRightButton(R.drawable.tt_top_right_group_manager);
-
     }
 
 
@@ -111,4 +105,11 @@ public class LyViewMapActivity extends MapActivity
         }
         topBar.setBackgroundResource(resID);
     }
+
+    private View.OnClickListener mClickCallBack = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            finish();
+        }
+    };
 }
