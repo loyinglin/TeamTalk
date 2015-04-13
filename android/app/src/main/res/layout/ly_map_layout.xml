@@ -5,6 +5,11 @@
     android:background="#ebebeb"
     android:orientation="vertical" >
 
+    <com.tencent.tencentmap.mapsdk.map.MapView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/LyViewTest"/>
+
     <FrameLayout android:layout_width="match_parent"
                  android:layout_height="wrap_content"
             android:id="@+id/LyframeLayout">

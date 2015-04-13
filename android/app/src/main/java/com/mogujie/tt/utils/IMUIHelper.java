@@ -29,9 +29,7 @@ import com.mogujie.tt.config.UrlConstant;
 import com.mogujie.tt.imservice.entity.SearchElement;
 import com.mogujie.tt.imservice.event.LoginEvent;
 import com.mogujie.tt.imservice.event.SocketEvent;
-import com.mogujie.tt.ui.activity.GroupMemberSelectActivity;
-import com.mogujie.tt.ui.activity.MessageActivity;
-import com.mogujie.tt.ui.activity.UserInfoActivity;
+import com.mogujie.tt.ui.activity.*;
 import com.mogujie.tt.utils.pinyin.PinYin.PinYinElement;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
@@ -96,9 +94,11 @@ public class IMUIHelper {
 
     // 跳转到聊天页面
     public static void openChatActivity(Context ctx, String sessionKey) {
-        Intent intent = new Intent(ctx, MessageActivity.class);
+        //Intent intent = new Intent(ctx, MessageActivity.class);
+        Intent intent = new Intent(ctx, LyViewMapActivity.class);
         intent.putExtra(IntentConstant.KEY_SESSION_KEY, sessionKey);
         ctx.startActivity(intent);
+
     }
 
 

@@ -1,271 +1,250 @@
 package com.mogujie.tt.ui.fragment;
 
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.view.ContextThemeWrapper;
-import android.view.Gravity;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
-import android.widget.RelativeLayout;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
+import com.tencent.mapsdk.raster.model.*;
+import com.tencent.tencentmap.mapsdk.map.*;
 
-import com.mogujie.tt.DB.entity.UserEntity;
-import com.mogujie.tt.R;
-import com.mogujie.tt.utils.IMUIHelper;
-import com.mogujie.tt.imservice.event.UserInfoEvent;
-import com.mogujie.tt.imservice.manager.IMLoginManager;
-import com.mogujie.tt.imservice.service.IMService;
-import com.mogujie.tt.ui.activity.SettingActivity;
-import com.mogujie.tt.imservice.support.IMServiceConnector;
-import com.mogujie.tt.utils.FileUtil;
-import com.mogujie.tt.ui.widget.IMBaseImageView;
-import com.nostra13.universalimageloader.core.ImageLoader;
+public class MapFragment extends Fragment {
 
-import java.io.File;
+    private QSupportMapFragment qMapFragment;
+    private MapFragmentUtil mapFragUtil;
+    private MapController mapController;
+    private TextView tvMonitor;
+    private Button btnAnimate;
+    private Button btnMarker;
+    private Button btnGeometry;
+    private LinearLayout mainLayout;
+    private FrameLayout mapFrame;
 
-import de.greenrobot.event.EventBus;
+    private GeoPoint mGeoPoint;
+    private LatLng mLatLng;
+    private Marker mMarker;
+    private Polyline mPolyline;
+    private Polygon mpPolygon;
+    private Circle mCircle;
+    int id = 0x7f071001;
 
-public class MapFragment extends MainFragment {
-	private View curView = null;
-	private View contentView;
-	private View exitView;
-    private View clearView;
-    private View settingView;
-
-    private IMServiceConnector imServiceConnector = new IMServiceConnector(){
-        @Override
-        public void onServiceDisconnected() {}
-
-        @Override
-        public void onIMServiceConnected() {
-            if (curView == null) {
-                return;
-            }
-            IMService imService = imServiceConnector.getIMService();
-            if (imService == null) {
-                return;
-            }
-            if (!imService.getContactManager().isUserDataReady()) {
-                logger.i("detail#contact data are not ready");
-            } else {
-                init(imService);
-            }
-        }
-    };
-
-	@Override
+    @Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState) {
 
 
-		imServiceConnector.connect(getActivity());
-        EventBus.getDefault().register(this);
-
-		if (null != curView) {
-			((ViewGroup) curView.getParent()).removeView(curView);
-			return curView;
-		}
-		curView = inflater.inflate(R.layout.tt_fragment_my, topContentView);
-
-		initRes();
-
-		return curView;
+        mainLayout = new LinearLayout(getActivity());
+        mainLayout.setOrientation(LinearLayout.VERTICAL);
+        mainLayout.setBackgroundColor(0xffffffff);
+        mainLayout.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        init();
+        return mainLayout;
 	}
 
-	/**
-	 * @Description 初始化资源
-	 */
-	private void initRes() {
-		super.init(curView);
-		
-		contentView = curView.findViewById(R.id.content);
-        exitView = curView.findViewById(R.id.exitPage);
-        clearView = curView.findViewById(R.id.clearPage);
-        settingView = curView.findViewById(R.id.settingPage);
-
-        clearView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(getActivity(), android.R.style.Theme_Holo_Light_Dialog));
-                LayoutInflater inflater = (LayoutInflater)getActivity().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                View dialog_view = inflater.inflate(R.layout.tt_custom_dialog, null);
-                final EditText editText = (EditText)dialog_view.findViewById(R.id.dialog_edit_content);
-                editText.setVisibility(View.GONE);
-                TextView textText = (TextView)dialog_view.findViewById(R.id.dialog_title);
-                textText.setText(R.string.clear_cache_tip);
-                builder.setView(dialog_view);
-
-                builder.setPositiveButton(getString(R.string.tt_ok), new DialogInterface.OnClickListener() {
-
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        ImageLoader.getInstance().clearMemoryCache();
-                        ImageLoader.getInstance().clearDiskCache();
-                        new Handler().postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                FileUtil.deleteHistoryFiles(new File(Environment.getExternalStorageDirectory().toString()
-                                        + File.separator + "MGJ-IM"+File.separator),System.currentTimeMillis());
-                                Toast toast = Toast.makeText(getActivity(),R.string.thumb_remove_finish,Toast.LENGTH_LONG);
-                                toast.setGravity(Gravity.CENTER,0,0);
-                                toast.show();
-                            }
-                        },500);
-
-                        dialog.dismiss();
-                    }
-                });
-
-                builder.setNegativeButton(getString(R.string.tt_cancel), new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        dialogInterface.dismiss();
-                    }
-                });
-                builder.show();
-            }
-        });
-        exitView.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-
-                AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(getActivity(), android.R.style.Theme_Holo_Light_Dialog));
-                LayoutInflater inflater = (LayoutInflater)getActivity().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                View dialog_view = inflater.inflate(R.layout.tt_custom_dialog, null);
-                final EditText editText = (EditText)dialog_view.findViewById(R.id.dialog_edit_content);
-                editText.setVisibility(View.GONE);
-                TextView textText = (TextView)dialog_view.findViewById(R.id.dialog_title);
-                textText.setText(R.string.exit_teamtalk_tip);
-                builder.setView(dialog_view);
-                builder.setPositiveButton(getString(R.string.tt_ok), new DialogInterface.OnClickListener() {
-
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        IMLoginManager.instance().setKickout(false);
-                        IMLoginManager.instance().logOut();
-                        getActivity().finish();
-                        dialog.dismiss();
-                    }
-                });
-
-                builder.setNegativeButton(getString(R.string.tt_cancel), new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                       dialogInterface.dismiss();
-                    }
-                });
-                builder.show();
-
-			}
-		});
-
-        settingView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // 跳转到配置页面
-                startActivity(new Intent(MapFragment.this.getActivity(), SettingActivity.class));
-            }
-        });
-		hideContent();
-
-		// 设置顶部标题栏
-		setTopTitle(getActivity().getString(R.string.page_me));
-		// 设置页面其它控件
-
-	}
-
-	private void hideContent() {
-		if (contentView != null) {
-			contentView.setVisibility(View.GONE);
-		}
-	}
-
-	private void showContent() {
-		if (contentView != null) {
-			contentView.setVisibility(View.VISIBLE);
-		}
-	}
-	@Override
-	public void onActivityCreated(Bundle savedInstanceState) {
-		super.onActivityCreated(savedInstanceState);
-	}
-
-	@Override
-	public void onHiddenChanged(boolean hidden) {
-		super.onHiddenChanged(hidden);
-	}
-
-	@Override
-	public void onDestroy() {
-		super.onDestroy();
-        // 应该放在这里嘛??
-        imServiceConnector.disconnect(getActivity());
-        EventBus.getDefault().unregister(this);
-	}
-
-	@Override
-	protected void initHandler() {
-	}
-
-    public void onEventMainThread(UserInfoEvent event){
-        switch (event){
-            case USER_INFO_OK:
-                init(imServiceConnector.getIMService());
+    @Override
+    public void onResume() {
+        // TODO Auto-generated method stub
+        super.onResume();
+        if (mapFragUtil == null) {
+            mapFragUtil = new MapFragmentUtil(qMapFragment);
+            mapController = mapFragUtil.getMapController();
         }
+        bindLinstener();
+
+        Log.e("get zoom level", Integer.toString(mapFragUtil.getZoomLevel()));
     }
 
 
-	private void init(IMService imService) {
-		showContent();
-		hideProgressBar();
-		
-		if (imService == null) {
-			return;
-		}
+    private void init() {
+        LinearLayout lineOne = new LinearLayout(getActivity());
+        lineOne.setOrientation(LinearLayout.HORIZONTAL);
+        mainLayout.addView(lineOne);
 
-		final UserEntity loginContact = imService.getLoginManager().getLoginInfo();
-		if (loginContact == null) {
-			return;
-		}
-		TextView nickNameView = (TextView) curView.findViewById(R.id.nickName);
-		TextView userNameView = (TextView) curView.findViewById(R.id.userName);
-        IMBaseImageView portraitImageView = (IMBaseImageView) curView.findViewById(R.id.user_portrait);
+        btnAnimate = new Button(getActivity());
+        btnAnimate.setText("移动到中关村");
+        lineOne.addView(btnAnimate);
 
-		nickNameView.setText(loginContact.getMainName());
-		userNameView.setText(loginContact.getRealName());
+        btnMarker = new Button(getActivity());
+        btnMarker.setText("添加Marker");
+        lineOne.addView(btnMarker);
 
-        //头像设置
-        portraitImageView.setDefaultImageRes(R.drawable.tt_default_user_portrait_corner);
-        portraitImageView.setCorner(15);
-        portraitImageView.setImageResource(R.drawable.tt_default_user_portrait_corner);
-        portraitImageView.setImageUrl(loginContact.getAvatar());
+        btnGeometry = new Button(getActivity());
+        btnGeometry.setText("添加图形");
+        lineOne.addView(btnGeometry);
 
-        RelativeLayout userContainer = (RelativeLayout) curView.findViewById(R.id.user_container);
-		userContainer.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View arg0) {
-				IMUIHelper.openUserProfileActivity(getActivity(), loginContact.getPeerId());
-			}
-		});
-	}
+        tvMonitor = new TextView(getActivity());
+        tvMonitor.setTextColor(0xff000000);
+        tvMonitor.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        mainLayout.addView(tvMonitor);
 
-    private void deleteFilesByDirectory(File directory) {
-        if (directory != null && directory.exists() && directory.isDirectory()) {
-            for (File item : directory.listFiles()) {
-                item.delete();
+        if (qMapFragment != null) {
+            return;
+        }
+        qMapFragment = QSupportMapFragment.newInstance();
+        FragmentTransaction fragmentTransaction = getActivity().getSupportFragmentManager().beginTransaction();
+        mapFrame = new FrameLayout(getActivity());
+
+        mapFrame.setId(id);
+        fragmentTransaction.add(id, qMapFragment);
+        fragmentTransaction.commit();
+        mainLayout.addView(mapFrame);
+    }
+
+    private void bindLinstener() {
+        final LatLng latLng1 = new LatLng(39.925961,116.388171);
+        final LatLng latLng2 = new LatLng(39.735961,116.488171);
+        final LatLng latLng3 = new LatLng(39.635961,116.268171);
+
+        final PolylineOptions lineOpt = new PolylineOptions();
+        lineOpt.add(latLng1);
+        lineOpt.add(latLng2);
+        lineOpt.add(latLng3);
+
+        final LatLng latLng4 = new LatLng(39.935961,116.388171);
+        final LatLng latLng5 = new LatLng(40.035961,116.488171);
+        final LatLng latLng6 = new LatLng(40.095961,116.498171);
+        final LatLng latLng7 = new LatLng(40.135961,116.478171);
+        final LatLng latLng8 = new LatLng(40.095961,116.398171);
+        final PolygonOptions polygonOp = new PolygonOptions();
+        polygonOp.fillColor(0x55000077);
+        polygonOp.strokeWidth(4);
+        polygonOp.add(latLng4);
+        polygonOp.add(latLng5);
+        polygonOp.add(latLng6);
+        polygonOp.add(latLng7);
+        polygonOp.add(latLng8);
+
+        final LatLng latLng9 = new LatLng(39.735961,116.788171);
+        final CircleOptions circleOp = new CircleOptions();
+        circleOp.center(latLng9);
+        circleOp.radius(5000);
+        circleOp.strokeColor(0xff0000ff);
+        circleOp.strokeWidth(5);
+        circleOp.fillColor(0xff00ff00);
+        mGeoPoint = new GeoPoint((int)(39.980484 * 1e6), (int)(116.311302 * 1e6));//中关村
+
+        btnAnimate.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                // TODO Auto-generated method stub
+                if (btnAnimate.getText().toString().equals("移动到中关村")) {
+                    mapController.animateTo(mGeoPoint);
+                    btnAnimate.setText("停止动画");
+                } else {
+                    mapController.stopAnimte();
+                }
             }
-        }
-        else {
-            logger.e("fragment#deleteFilesByDirectory, failed");
-        }
+        });
+
+        btnMarker.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                // TODO Auto-generated method stub
+                if (btnMarker.getText().toString().equals("添加Marker")) {
+                    mLatLng = new LatLng(39.984122, 116.307484);
+                    mMarker = mapFragUtil.addMarker(new MarkerOptions()
+                            .icon(BitmapDescriptorFactory.defaultMarker())
+                            .position(mLatLng)
+                            .draggable(true));
+
+                    btnMarker.setText("删除Marker");
+                    mapFragUtil.refreshMap();
+                } else {
+                    mapFragUtil.removeOverlay(mMarker);
+                    btnMarker.setText("添加Marker");
+                }
+
+            }
+        });
+
+        btnGeometry.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                // TODO Auto-generated method stub
+                if (btnGeometry.getText().toString().equals("添加图形")) {
+                    mpPolygon = mapFragUtil.addPolygon(polygonOp);
+                    mPolyline = mapFragUtil.addPolyline(lineOpt);
+                    mCircle = mapFragUtil.addCircle(circleOp);
+                    btnGeometry.setText("删除图形");
+                } else {
+                    mapFragUtil.removeOverlay(mpPolygon);
+                    mapFragUtil.removeOverlay(mPolyline);
+                    mapFragUtil.removeOverlay(mCircle);
+                    btnGeometry.setText("添加图形");
+                }
+
+            }
+        });
+        mapController.setOnMapLoadedListener(new OnLoadedListener() {
+
+            @Override
+            public void onMapLoaded() {
+                // TODO Auto-generated method stub
+                Log.e("Listener", "Map Loaded");
+            }
+        });
+        mapController.setOnMapCameraChangeListener(new OnMapCameraChangeListener() {
+
+            @Override
+            public void onCameraChangeFinish(CameraPosition arg0) {
+                // TODO Auto-generated method stub
+                tvMonitor.setText( "Camera Change Finish:" +
+                        "Target:" + arg0.getTarget().toString() +
+                        "zoom level:" + arg0.getZoom());
+                btnAnimate.setText("移动到中关村");
+            }
+
+            @Override
+            public void onCameraChange(CameraPosition arg0) {
+                // TODO Auto-generated method stub
+                Log.e("Listener", "Camera Change");
+            }
+        });
+        mapController.setOnMapHitListener(new OnMapHitListener() {
+
+            @Override
+            public void onMapClick(LatLng arg0) {
+                // TODO Auto-generated method stub
+                Log.e("Listener", "Map Click");
+            }
+        });
+        mapController.setOnMapPressClickLisener(new OnMapLongPressListener() {
+
+            @Override
+            public void onMapLongPress(LatLng arg0) {
+                // TODO Auto-generated method stub
+                Log.e("Listener", "Map Long Press");
+            }
+        });
+
+        mapController.setOnMarkerDragListener(new OnMarkerDragedListener() {
+
+            @Override
+            public void onMarkerDrag(Marker arg0) {
+                // TODO Auto-generated method stub
+                tvMonitor.setText("Marker Dragging");
+            }
+
+            @Override
+            public void onMarkerDragEnd(Marker arg0) {
+                // TODO Auto-generated method stub
+                tvMonitor.setText("Marker Drag End");
+            }
+
+            @Override
+            public void onMarkerDragStart(Marker arg0) {
+                // TODO Auto-generated method stub
+                tvMonitor.setText("Marker Drag Start");
+            }
+        });
     }
 }

@@ -1,0 +1,5 @@
+build/
+app/build/
+mgimlibs/build/
+.idea/
+.gradle/
